@@ -1,4 +1,4 @@
-// Copyright © 2017 NAME HERE <EMAIL ADDRESS>
+// Copyright © 2017 Abdisamad Hashi <shaybix@tuta.io>
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -22,21 +22,24 @@ import (
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
+var (
+	cfgFile string
+	file    string
+)
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:   "loadenv",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Loadenv loads environment variables from a .env file",
+	Long:  ``,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := load(); err != nil {
+			fmt.Fprintln(os.Stderr, "could not load file")
+			os.Exit(1)
+		}
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -48,7 +51,7 @@ func Execute() {
 	}
 }
 
-func init() { 
+func init() {
 	cobra.OnInitialize(initConfig)
 
 	// Here you will define your flags and configuration settings.
@@ -59,6 +62,8 @@ func init() {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	RootCmd.Flags().StringVar(&file, "file", "", "filename with environment variables to laod")
+
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -85,4 +90,15 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
+}
+
+// load reads from a .env file by default unless given --file
+// flag has been set.
+func load() error {
+
+	if *file != "" {
+		// load file
+	}
+
+	return nil
 }
