@@ -96,7 +96,7 @@ func initConfig() {
 // flag has been set.
 func load() error {
 
-	if *file != "" {
+	if file != "" {
 		// load file
 	}
 
