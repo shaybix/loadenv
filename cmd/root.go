@@ -14,8 +14,13 @@
 package cmd
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
+	"strings"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -36,7 +41,7 @@ var RootCmd = &cobra.Command{
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := load(); err != nil {
-			fmt.Fprintln(os.Stderr, "could not load file")
+			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 	},
@@ -96,9 +101,72 @@ func initConfig() {
 // flag has been set.
 func load() error {
 
+	var fname string
+
 	if file != "" {
 		// load file
+		fname = file
+	} else {
+		fname = ".env"
+	}
+
+	if _, err := os.Stat(fname); os.IsNotExist(err) {
+		return errors.New("can not find .env file in the local directory")
+	}
+
+	f, err := os.Open(fname)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	if err := loadVars(f); err != nil {
+		return err
 	}
 
 	return nil
+}
+
+// loadVars loads individual environment variables from Reader  given
+// after checking first if they are commented or not.
+func loadVars(f io.Reader) error {
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		if err := setVar(line); err != nil {
+			return err
+		}
+
+	}
+
+	return nil
+
+}
+
+// setVar will set the environment variable given
+func setVar(line string) error {
+
+	vars := strings.Split(line, "=")
+	variable := vars[0]
+	value := vars[1]
+
+	fmt.Println(variable)
+	fmt.Println(value)
+
+	cmd := exec.Command("export", variable+"="+value)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	return nil
+
 }
