@@ -15,9 +15,7 @@ package cmd
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -28,14 +26,15 @@ import (
 )
 
 var (
-	cfgFile string
-	file    string
+	cfgFile    string
+	dotenvFile string
+	envConfig  map[string]string
 )
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:   "loadenv",
-	Short: "Loadenv loads environment variables from a .env file",
+	Short: "Loadenv loads environment for a laravel project using Docker",
 	Long:  ``,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
@@ -67,8 +66,7 @@ func init() {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	RootCmd.Flags().StringVar(&file, "file", "", "filename with environment variables to laod")
-
+	RootCmd.Flags().StringVar(&dotenvFile, "dotenv", "", "dotenv file with environment variables")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -103,16 +101,34 @@ func load() error {
 
 	var fname string
 
-	if file != "" {
+	if dotenvFile != "" {
 		// load file
-		fname = file
+		fname = dotenvFile
 	} else {
 		fname = ".env"
 	}
 
 	if _, err := os.Stat(fname); os.IsNotExist(err) {
-		return errors.New("can not find .env file in the local directory")
+		return fmt.Errorf("can not find %s file in the local directory", fname)
 	}
+
+	if _, err := os.Stat("Dockerfile"); os.IsNotExist(err) {
+		return fmt.Errorf("can not find Dockerfile file in the local directory")
+	}
+
+	if err := loadEnvVars(fname); err != nil {
+		return err
+	}
+
+	if err := startDocker(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+//loadEnvVars will load environment variables from file
+func loadEnvVars(fname string) error {
 
 	f, err := os.Open(fname)
 	if err != nil {
@@ -121,52 +137,42 @@ func load() error {
 
 	defer f.Close()
 
-	if err := loadVars(f); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// loadVars loads individual environment variables from Reader  given
-// after checking first if they are commented or not.
-func loadVars(f io.Reader) error {
-
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
 
 		if strings.HasPrefix(line, "#") {
 			continue
-		}
+		} else {
+			envVar := strings.Split(line, "=")
 
-		if err := setVar(line); err != nil {
-			return err
+			if err := os.Setenv(envVar[0], envVar[1]); err != nil {
+				return err
+			}
 		}
-
 	}
 
 	return nil
-
 }
 
-// setVar will set the environment variable given
-func setVar(line string) error {
+// startDocker will orchestrate the docker containers by executing the docker-compose
+// command in the shell.
+func startDocker() error {
 
-	vars := strings.Split(line, "=")
-	variable := vars[0]
-	value := vars[1]
+	dockerComposeBuildCmd := exec.Command("docker-compose", "build", ".")
+	dockerComposeBuildCmd.Stdout = os.Stdout
+	dockerComposeBuildCmd.Stderr = os.Stderr
+	if err := dockerComposeBuildCmd.Run(); err != nil {
+		return err
+	}
 
-	fmt.Println(variable)
-	fmt.Println(value)
+	dockerComposeUpCmd := exec.Command("docker-compose up", "run")
+	dockerComposeUpCmd.Stdout = os.Stdout
+	dockerComposeUpCmd.Stderr = os.Stderr
 
-	cmd := exec.Command("export", variable+"="+value)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
+	if err := dockerComposeUpCmd.Run(); err != nil {
 		return err
 	}
 
 	return nil
-
 }
