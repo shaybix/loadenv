@@ -166,11 +166,26 @@ func startDocker() error {
 		return err
 	}
 
-	dockerComposeUpCmd := exec.Command("docker-compose up", "run")
+	dockerComposeUpCmd := exec.Command("docker-compose", "up")
 	dockerComposeUpCmd.Stdout = os.Stdout
 	dockerComposeUpCmd.Stderr = os.Stderr
 
 	if err := dockerComposeUpCmd.Run(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// stopDocker stops docker environment for the project in the
+// current working directory
+func stopDocker() error {
+
+	dockerComposeDownCmd := exec.Command("docker-compose", "down")
+	dockerComposeDownCmd.Stdout = os.Stdout
+	dockerComposeDownCmd.Stderr = os.Stderr
+
+	if err := dockerComposeDownCmd.Run(); err != nil {
 		return err
 	}
 
