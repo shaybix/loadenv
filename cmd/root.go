@@ -191,3 +191,9 @@ func stopDocker() error {
 
 	return nil
 }
+
+// cleanup will clean up files/directory created
+func cleanup() error {
+
+	return nil
+}
