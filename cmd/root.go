@@ -189,11 +189,17 @@ func stopDocker() error {
 		return err
 	}
 
+	if err := cleanup(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // cleanup will clean up files/directory created
 func cleanup() error {
+
+	// remove tmp dir in the project folder
 
 	return nil
 }
